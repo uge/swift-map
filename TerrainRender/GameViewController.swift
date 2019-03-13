@@ -8,6 +8,9 @@
 
 import SceneKit
 import QuartzCore
+import AppKit
+import Foundation
+import Cocoa
 
 class GameViewController: NSViewController {
     
@@ -16,6 +19,39 @@ class GameViewController: NSViewController {
         
         // create a new scene
         let scene = SCNScene(named: "art.scnassets/ship.scn")!
+        
+        // Load the dem example
+        let dem = NSImage(contentsOfFile: "/Users/uge/Desktop/TerrainRender/TerrainRender/art.scnassets/out.png")!
+        
+        // Define a 2D plane object to map elevation to
+        let plane = SCNPlane(width: 10.0, height: 10.0)
+        
+        // Create a representation of the DEM map to colorize
+        guard let demRep = NSBitmapImageRep(data: dem.tiffRepresentation!) else {
+            print("Could not make demRep")
+            return 
+        }
+        
+        // Use the built in colorization instead of a more fancy LUT to go from green to red based on height
+        demRep.colorize(byMappingGray: CGFloat(0.1), to: NSColor.red, blackMapping: NSColor.green, whiteMapping: NSColor.red)
+        
+        let material = SCNMaterial()
+        // Color comes from the height->color representation
+        material.diffuse.contents = demRep
+        // Displacement comes from the grayscale height value
+        material.displacement.contents = dem
+        
+        // In case we rotate it to behind
+        material.isDoubleSided = true
+        
+        plane.widthSegmentCount = 1201
+        plane.heightSegmentCount = 1201
+        plane.firstMaterial = material
+
+        let planeNode = SCNNode(geometry:plane)
+        
+        planeNode.position = SCNVector3(x:0, y:0, z:0)
+        scene.rootNode.addChildNode(planeNode)
         
         // create and add a camera to the scene
         let cameraNode = SCNNode()
@@ -38,12 +74,7 @@ class GameViewController: NSViewController {
         ambientLightNode.light!.type = .ambient
         ambientLightNode.light!.color = NSColor.darkGray
         scene.rootNode.addChildNode(ambientLightNode)
-        
-        // retrieve the ship node
-        let ship = scene.rootNode.childNode(withName: "ship", recursively: true)!
-        
-        // animate the 3d object
-        ship.runAction(SCNAction.repeatForever(SCNAction.rotateBy(x: 0, y: 2, z: 0, duration: 1)))
+
         
         // retrieve the SCNView
         let scnView = self.view as! SCNView
